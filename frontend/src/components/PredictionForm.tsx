@@ -20,7 +20,6 @@ interface PredictionFormProps {
 
 export function PredictionForm({
   match,
-  matchday,
   players,
   existingPrediction,
   blockedPlayerIds = [],
