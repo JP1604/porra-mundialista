@@ -14,7 +14,7 @@ interface MatchCardProps {
 function StatusBadge({ status }: { status: Match['status'] }) {
   if (status === 'finished') {
     return (
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-800/60 px-2 py-0.5 rounded-full border border-white/[0.06]">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-500 bg-slate-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/[0.06]">
         Finalizado
       </span>
     )
@@ -31,7 +31,7 @@ export function MatchCard({ match, matchday, userPrediction, className }: MatchC
 
   return (
     <div className={cn(
-      'glass-card rounded-xl p-4 flex flex-col gap-3 group hover:border-white/[0.12] hover:bg-[#111f38] transition-all duration-200',
+      'glass-card rounded-xl p-4 flex flex-col gap-3 group transition-all duration-200',
       className
     )}>
       {/* Header: fecha + estado */}
@@ -54,7 +54,7 @@ export function MatchCard({ match, matchday, userPrediction, className }: MatchC
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           </div>
-          <span className="text-xs font-semibold text-slate-200 text-center leading-tight truncate w-full">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 text-center leading-tight truncate w-full">
             {match.home_team_name}
           </span>
         </div>
@@ -62,13 +62,13 @@ export function MatchCard({ match, matchday, userPrediction, className }: MatchC
         {/* Marcador */}
         <div className="flex flex-col items-center gap-1 shrink-0 px-3">
           {match.status === 'finished' ? (
-            <span className="text-3xl font-black text-white tabular-nums tracking-tight">
+            <span className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
               {match.home_score ?? 0}
-              <span className="text-slate-600 mx-1">–</span>
+              <span className="text-slate-400 mx-1">–</span>
               {match.away_score ?? 0}
             </span>
           ) : (
-            <span className="text-slate-500 font-black text-xl tracking-tight">VS</span>
+            <span className="text-slate-400 dark:text-slate-500 font-black text-xl tracking-tight">VS</span>
           )}
           {match.group_name && (
             <span className="text-[10px] text-slate-600 font-medium">Grupo {match.group_name}</span>
@@ -85,7 +85,7 @@ export function MatchCard({ match, matchday, userPrediction, className }: MatchC
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
             />
           </div>
-          <span className="text-xs font-semibold text-slate-200 text-center leading-tight truncate w-full">
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 text-center leading-tight truncate w-full">
             {match.away_team_name}
           </span>
         </div>
@@ -102,9 +102,9 @@ export function MatchCard({ match, matchday, userPrediction, className }: MatchC
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/[0.05]">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-white/[0.05]">
         {match.venue && (
-          <span className="text-[10px] text-slate-600 truncate">{match.venue}</span>
+          <span className="text-[10px] text-slate-500 truncate">{match.venue}</span>
         )}
         <div className="ml-auto flex gap-2 shrink-0">
           <Link to={`/match/${match.id}`}>

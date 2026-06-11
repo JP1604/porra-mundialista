@@ -49,10 +49,10 @@ export function Login() {
     }
   }
 
-  const inputClass = 'pl-9 bg-[#1E293B] border-white/[0.08] text-white placeholder:text-slate-600 focus-visible:ring-[#00D084] focus-visible:border-[#00D084]/40'
+  const inputClass = 'pl-9 bg-slate-100 dark:bg-[#1E293B] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus-visible:ring-[#00D084] focus-visible:border-[#00D084]/40'
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#070C18] px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden" style={{ background: 'var(--app-bg)' }}>
       {/* Background glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-20%,rgba(0,208,132,0.10)_0%,transparent_70%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_40%_at_80%_80%,rgba(245,158,11,0.05)_0%,transparent_70%)]" />
@@ -65,14 +65,14 @@ export function Login() {
               <div className="absolute inset-0 rounded-full bg-[#F59E0B]/20 blur-xl scale-150" />
               <Trophy className="relative w-12 h-12 text-[#F59E0B]" />
             </div>
-            <h1 className="text-2xl font-black text-white">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">
               Porra <span className="text-[#00D084]">2026</span>
             </h1>
             <p className="text-slate-500 text-xs">Mundial USA–Canadá–México</p>
           </div>
 
           {/* Tabs */}
-          <div className="flex w-full bg-[#1E293B] rounded-lg p-1 gap-1">
+          <div className="flex w-full bg-slate-100 dark:bg-[#1E293B] rounded-lg p-1 gap-1">
             {(['login', 'register'] as Mode[]).map(m => (
               <button
                 key={m}
@@ -80,8 +80,8 @@ export function Login() {
                 onClick={() => { setMode(m); setError(null); setSuccess(null) }}
                 className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all duration-150
                   ${mode === m
-                    ? 'bg-[#0F172A] text-white shadow-sm border border-white/[0.08]'
-                    : 'text-slate-500 hover:text-slate-300'}`}
+                    ? 'bg-white dark:bg-[#0F172A] text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-white/[0.08]'
+                    : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
               >
                 {m === 'login' ? 'Iniciar sesión' : 'Registrarse'}
               </button>
@@ -176,7 +176,7 @@ export function Login() {
             type="button"
             variant="outline"
             onClick={() => signInWithGoogle().catch(e => setError(e.message))}
-            className="w-full bg-transparent border-white/[0.12] text-white hover:bg-white/[0.05] hover:border-white/[0.2] gap-2.5 font-medium"
+            className="w-full bg-transparent border-slate-200 dark:border-white/[0.12] text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-white/[0.05] gap-2.5 font-medium"
           >
             {/* Google SVG icon (no emojis per skill guidelines) */}
             <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden>
@@ -188,7 +188,7 @@ export function Login() {
             Continuar con Google
           </Button>
 
-          <p className="text-xs text-slate-600 text-center">
+          <p className="text-xs text-slate-500 text-center">
             {mode === 'login' ? (
               <>¿No tienes cuenta?{' '}
                 <button type="button" onClick={() => setMode('register')}

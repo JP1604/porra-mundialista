@@ -1,6 +1,7 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { cn, getInitials } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -48,30 +49,33 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <aside
       className={cn(
         'fixed top-0 left-0 h-full w-60 z-30 flex flex-col',
-        'bg-[#0A0E1A] border-r border-white/[0.07]',
-        'transition-transform duration-200 ease-in-out',
+        'border-r transition-transform duration-200 ease-in-out',
         'md:translate-x-0',
         open ? 'translate-x-0' : '-translate-x-full',
       )}
+      style={{ background: 'var(--sidebar-bg)', borderColor: 'var(--border-color)' }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.07] shrink-0">
+      <div className="flex items-center justify-between px-4 h-16 shrink-0" style={{ borderBottom: '1px solid var(--border-color)' }}>
         <Link to="/" onClick={onClose} className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-[#F59E0B]/10 flex items-center justify-center ring-1 ring-[#F59E0B]/20">
             <Trophy className="w-5 h-5 text-[#F59E0B]" />
           </div>
           <div className="leading-tight">
-            <p className="font-black text-white text-sm tracking-tight">Porra 2026</p>
+            <p className="font-black text-slate-900 dark:text-white text-sm tracking-tight">Porra 2026</p>
             <p className="text-[10px] text-slate-500">Mundial USA·CAN·MEX</p>
           </div>
         </Link>
-        <button
-          onClick={onClose}
-          className="md:hidden text-slate-500 hover:text-white transition-colors"
-          aria-label="Cerrar menú"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <button
+            onClick={onClose}
+            className="md:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+            aria-label="Cerrar menú"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -91,7 +95,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
                   ? 'bg-[#00D084]/12 text-[#00D084] border border-[#00D084]/20'
-                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05] border border-transparent',
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.05] border border-transparent',
               )
             }
           >
@@ -125,18 +129,18 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       </nav>
 
       {/* User section */}
-      <div className="border-t border-white/[0.07] p-3 shrink-0">
+      <div className="p-3 shrink-0" style={{ borderTop: '1px solid var(--border-color)' }}>
         {profile ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/[0.05] transition-colors text-left group">
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-colors text-left group">
                 <Avatar className="w-8 h-8 shrink-0">
                   <AvatarFallback className="bg-[#00D084]/15 text-[#00D084] text-xs font-bold">
                     {getInitials(profile.alias)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate leading-tight">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white truncate leading-tight">
                     {profile.alias}
                   </p>
                   <p className="text-xs text-slate-500 truncate leading-tight">

@@ -23,7 +23,7 @@ export function Leaderboard() {
             <Trophy className="w-5 h-5 text-[#F59E0B]" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-white">Clasificación</h1>
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white">Clasificación</h1>
             <p className="text-xs text-slate-500">Ranking global de predicciones</p>
           </div>
         </div>

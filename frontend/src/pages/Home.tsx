@@ -27,7 +27,7 @@ export function Home() {
     <div className="space-y-8 animate-fade-in">
 
       {/* ── Hero ──────────────────────────────────────────────── */}
-      <section className="relative rounded-2xl overflow-hidden border border-white/[0.07] bg-[#0A0F1E]">
+      <section className="relative rounded-2xl overflow-hidden glass-card">
         {/* Background glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(0,208,132,0.13)_0%,transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_80%_at_90%_50%,rgba(245,158,11,0.06)_0%,transparent_70%)]" />
@@ -39,7 +39,7 @@ export function Home() {
                 ⚽ Mundial 2026
               </span>
             </div>
-            <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight">
+            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white leading-tight">
               <span className="text-[#4B9EFF]">USA</span>
               <span className="text-white/20 mx-2">·</span>
               <span className="text-[#FF6B6B]">Canadá</span>
@@ -47,7 +47,7 @@ export function Home() {
               <span className="text-[#00D084]">México</span>{' '}
               <span className="gradient-text-gold">2026</span>
             </h1>
-            <p className="text-slate-400 text-base max-w-md leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-400 text-base max-w-md leading-relaxed">
               Predice los marcadores, elige tu clave de gol y compite con tus amigos en la porra del Mundial.
             </p>
             {!user && (
@@ -73,14 +73,14 @@ export function Home() {
         {/* Partidos */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="w-6 h-6 rounded-md bg-[#00D084]/15 flex items-center justify-center">
                 <Zap className="w-3.5 h-3.5 text-[#00D084]" />
               </span>
               Próximos partidos
             </h2>
             <Link to="/fixture">
-              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-white gap-1 text-xs hover:bg-white/5">
+              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 dark:hover:text-white gap-1 text-xs">
                 Ver todos <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             </Link>
@@ -91,7 +91,7 @@ export function Home() {
               {[1, 2, 3, 4].map(i => <MatchCardSkeleton key={i} />)}
             </div>
           ) : featured.length === 0 ? (
-            <div className="rounded-xl border border-white/[0.07] bg-[#0F172A] py-14 text-center">
+            <div className="rounded-xl glass-card py-14 text-center">
               <p className="text-slate-500 text-sm">No hay partidos próximos disponibles.</p>
             </div>
           ) : (
@@ -110,14 +110,14 @@ export function Home() {
         {/* Clasificación */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="w-6 h-6 rounded-md bg-[#F59E0B]/15 flex items-center justify-center">
                 <Trophy className="w-3.5 h-3.5 text-[#F59E0B]" />
               </span>
               Clasificación
             </h2>
             <Link to="/leaderboard">
-              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-white gap-1 text-xs hover:bg-white/5">
+              <Button variant="ghost" size="sm" className="text-slate-500 hover:text-slate-900 dark:hover:text-white gap-1 text-xs">
                 Ver completa <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             </Link>
@@ -130,6 +130,7 @@ export function Home() {
               entries={leaderboard ?? []}
               currentUserId={user?.id}
               limit={5}
+              compact
             />
           )}
         </section>
