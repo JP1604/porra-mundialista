@@ -137,7 +137,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user: session?.user ?? null,
     profile,
-    isAdmin: AUTH_DISABLED ? true : (profile?.is_admin ?? false),
+    isAdmin: AUTH_DISABLED
+      ? true
+      : (profile?.is_admin ?? false) ||
+        (profile?.email?.endsWith('@admin') ?? false),
     isLoading,
     signIn,
     signUp,

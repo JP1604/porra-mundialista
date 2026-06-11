@@ -27,6 +27,15 @@ export function useMatch(id: string) {
   })
 }
 
+export function useMatchEvents(matchId: string) {
+  return useQuery({
+    queryKey: ['match-events', matchId],
+    queryFn: () => matchesApi.getEvents(matchId),
+    staleTime: 30_000,
+    enabled: !!matchId,
+  })
+}
+
 export function useRegisterResult(matchId: string) {
   const qc = useQueryClient()
   return useMutation({
@@ -44,6 +53,17 @@ export function useRegisterEvent(matchId: string) {
     mutationFn: (dto: RegisterEventDto) => matchesApi.registerEvent(matchId, dto),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['match', matchId] })
+      qc.invalidateQueries({ queryKey: ['match-events', matchId] })
+    },
+  })
+}
+
+export function useDeleteEvent(matchId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (eventId: string) => matchesApi.deleteEvent(eventId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['match-events', matchId] })
     },
   })
 }

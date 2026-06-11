@@ -12,6 +12,8 @@
     "test:api":      "tsx src/test-apis.ts",
     "seed:players":  "tsx src/seed-players.ts",
     "seed:squads":   "tsx src/seed-squads.ts",
+    "test:goals":    "tsx src/test-goals.ts",
+    "fix:bonuses":   "tsx src/fix-bonuses.ts",
     "cleanup":       "tsx src/cleanup.ts",
     "verify":        "tsx src/verify.ts",
     "qa":            "tsx src/qa-e2e.ts"

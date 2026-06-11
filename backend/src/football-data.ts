@@ -126,14 +126,31 @@ export async function getFinishedMatches(): Promise<FDMatch[]> {
   return []
 }
 
-/** 1 request por partido: goles y asistencias (puede estar vacío en plan free) */
+/** 1 request por partido: goles y asistencias — con reintentos */
 export async function getMatchGoals(matchId: number): Promise<FDGoal[]> {
-  try {
-    const { data } = await client.get(`/matches/${matchId}`)
-    return (data.goals ?? []) as FDGoal[]
-  } catch {
-    return []
+  const MAX_RETRIES = 3
+  const RETRY_DELAY = 12_000   // 12 s respeta el límite de 10 req/min del plan free
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data } = await client.get(`/matches/${matchId}`)
+      return (data.goals ?? []) as FDGoal[]
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      const msg  = (e as Error).message ?? ''
+      const isRetryable = code === 'ECONNRESET' || code === 'ECONNABORTED' ||
+        msg.includes('socket hang up') || msg.includes('ETIMEDOUT')
+
+      if (isRetryable && attempt < MAX_RETRIES) {
+        console.warn(`[football-data] getMatchGoals(${matchId}): intento ${attempt}/${MAX_RETRIES} falló (${code ?? 'error'}). Reintentando en ${RETRY_DELAY / 1000}s…`)
+        await new Promise(r => setTimeout(r, RETRY_DELAY))
+        continue
+      }
+      console.error(`[football-data] getMatchGoals(${matchId}): error final:`, msg)
+      return []
+    }
   }
+  return []
 }
 
 // ─── Plantillas (squads) ─────────────────────────────────────

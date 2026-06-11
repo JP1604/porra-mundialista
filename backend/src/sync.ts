@@ -8,6 +8,10 @@ import { getFinishedMatches, getMatchGoals } from './football-data.js'
 
 type FinishedMap = Map<number, Awaited<ReturnType<typeof getFinishedMatches>>[number]>
 
+/** Pausa para respetar el límite de 10 req/min del plan free (mínimo 6 s entre calls) */
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const API_DELAY = 7_000  // 7 s entre peticiones a football-data.org
+
 export async function syncResults(): Promise<void> {
   console.log(`\n[sync] ${new Date().toISOString()}`)
 
@@ -41,6 +45,7 @@ export async function syncResults(): Promise<void> {
     console.log(`[sync] ${toUpdate.length} partido(s) a actualizar.`)
     for (const match of toUpdate) {
       await processFinishedMatch(match, finishedIds)
+      if (toUpdate.indexOf(match) < toUpdate.length - 1) await sleep(API_DELAY)
     }
   } else {
     console.log('[sync] Todo al día.')
@@ -48,6 +53,12 @@ export async function syncResults(): Promise<void> {
 
   // 3. Pase corrector: partidos ya 'finished' con score 0-0 que la API corrigió
   await correctZeroZeroMatches(finishedIds)
+
+  // 4. Pase de recuperación: partidos 'finished' cuyas predicciones no tienen score calculado
+  await recalculateMissingScores()
+
+  // 5. Pase de recuperación de goles: partidos 'finished' sin match_events registrados
+  await recoverMissingGoals()
 }
 
 /** Actualiza un partido upcoming → finished y calcula scores */
@@ -119,25 +130,129 @@ async function correctZeroZeroMatches(finishedIds: FinishedMap): Promise<void> {
   }
 }
 
-/** Intenta registrar goleadores desde la API (puede estar vacío en plan free) */
-async function registerGoals(matchId: string, apiFootballId: number): Promise<void> {
+/**
+ * Pase 5: Recuperación de goles.
+ * Cubre dos casos:
+ *   A) Partidos finished con goles (score > 0) pero sin ningún match_event → se perdió la llamada a la API.
+ *   B) Partidos finished con goles pero TODAS las predicciones tienen bonus_score = 0 →
+ *      los eventos existen con el player_id equivocado (fallo en upsert de jugador).
+ * En ambos casos: borra eventos previos, re-descarga, re-calcula.
+ */
+async function recoverMissingGoals(): Promise<void> {
+  // Partidos terminados CON goles y con api_football_id
+  const { data: scoringMatches } = await supabase
+    .from('matches')
+    .select('id, home_team_name, away_team_name, api_football_id, home_score, away_score')
+    .eq('status', 'finished')
+    .not('api_football_id', 'is', null)
+    .or('home_score.gt.0,away_score.gt.0')   // al menos un equipo marcó
+
+  if (!scoringMatches || scoringMatches.length === 0) return
+
+  // Qué matches tienen al menos UN evento
+  const { data: withEvents } = await supabase
+    .from('match_events')
+    .select('match_id')
+
+  const withEventsSet = new Set((withEvents ?? []).map((e: { match_id: string }) => e.match_id))
+
+  // Qué matches tienen TODAS las predicciones con bonus = 0
+  const { data: zeroBonusPreds } = await supabase
+    .from('predictions')
+    .select('match_id, bonus_score')
+    .not('base_score', 'is', null)   // solo predicciones ya evaluadas
+
+  const allZeroBonus = new Set<string>()
+  if (zeroBonusPreds && zeroBonusPreds.length > 0) {
+    const bonusByMatch = new Map<string, number>()
+    for (const p of zeroBonusPreds) {
+      const prev = bonusByMatch.get(p.match_id) ?? 0
+      bonusByMatch.set(p.match_id, prev + (p.bonus_score ?? 0))
+    }
+    for (const [mid, total] of bonusByMatch) {
+      if (total === 0) allZeroBonus.add(mid)
+    }
+  }
+
+  const needsGoals = scoringMatches.filter(m =>
+    !withEventsSet.has(m.id) ||   // caso A: sin eventos
+    allZeroBonus.has(m.id)        // caso B: eventos con UUID incorrecto
+  )
+
+  if (needsGoals.length === 0) return
+
+  console.log(`[sync] 🎯 ${needsGoals.length} partido(s) con goles pero bonus=0 — re-sincronizando goleadores…`)
+
+  for (let i = 0; i < needsGoals.length; i++) {
+    const match = needsGoals[i]
+    if (i > 0) await sleep(API_DELAY)
+
+    const registered = await registerGoals(match.id, match.api_football_id)
+    if (registered > 0) {
+      console.log(`[sync]   🏆 ${registered} evento(s) para ${match.home_team_name} vs ${match.away_team_name} — recalculando…`)
+      await calculateScores(match.id, match.home_team_name, match.away_team_name)
+    } else {
+      console.log(`[sync]   ⚠️  Sin goleadores en API para ${match.home_team_name} vs ${match.away_team_name} (datos pendientes).`)
+    }
+  }
+}
+
+/**
+ * Pase de recuperación: detecta partidos 'finished' que tienen predicciones
+ * con base_score=NULL (el RPC nunca se ejecutó) y los recalcula.
+ */
+async function recalculateMissingScores(): Promise<void> {
+  // Buscar matches finished que tengan al menos una predicción sin calcular
+  const { data: uncalculated } = await supabase
+    .from('predictions')
+    .select('match_id')
+    .is('base_score', null)
+
+  if (!uncalculated || uncalculated.length === 0) return
+
+  const matchIds = [...new Set(uncalculated.map(p => p.match_id))]
+
+  // Filtrar solo los que están finished
+  const { data: finishedMatches } = await supabase
+    .from('matches')
+    .select('id, home_team_name, away_team_name')
+    .eq('status', 'finished')
+    .in('id', matchIds)
+
+  if (!finishedMatches || finishedMatches.length === 0) return
+
+  console.log(`[sync] 🔁 ${finishedMatches.length} partido(s) finished con scores pendientes — recalculando…`)
+  for (const m of finishedMatches) {
+    await calculateScores(m.id, m.home_team_name, m.away_team_name)
+  }
+}
+
+/** Intenta registrar goleadores desde la API. Retorna el número de eventos insertados. */
+async function registerGoals(matchId: string, apiFootballId: number): Promise<number> {
   const goals = await getMatchGoals(apiFootballId)
   if (goals.length === 0) {
     console.log('[sync]   Sin datos de goles (plan free / aún sin publicar).')
-    return
+    return 0
   }
 
+  // Eliminar eventos previos del partido para evitar duplicados en retries
+  await supabase.from('match_events').delete().eq('match_id', matchId)
+
   console.log(`[sync]   ${goals.length} gol(es) encontrado(s).`)
+  let registered = 0
   for (const g of goals) {
     if (g.type === 'OWN') continue  // gol en propia no da bonus
 
     await upsertPlayerEvent(matchId, g.scorer.id, g.scorer.name,
       g.type === 'PENALTY' ? 'penalty' : 'goal', g.minute)
+    registered++
 
     if (g.assist) {
       await upsertPlayerEvent(matchId, g.assist.id, g.assist.name, 'assist', g.minute)
+      registered++
     }
   }
+  return registered
 }
 
 /** Llama al RPC de cálculo de puntuaciones */
@@ -175,3 +290,6 @@ async function upsertPlayerEvent(
     match_id: matchId, player_id: player.id, event_type: type, minute,
   })
 }
+
+// Permite ejecutar directamente: npm run sync
+syncResults().catch(console.error)

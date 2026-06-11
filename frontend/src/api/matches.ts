@@ -86,6 +86,31 @@ export const matchesApi = {
     if (error) throw new Error(error.message)
   },
 
+  deleteEvent: async (eventId: string): Promise<void> => {
+    const { error } = await supabase
+      .from('match_events')
+      .delete()
+      .eq('id', eventId)
+    if (error) throw new Error(error.message)
+  },
+
+  getEvents: async (matchId: string): Promise<import('@/types').MatchEvent[]> => {
+    const { data, error } = await supabase
+      .from('match_events')
+      .select('id, match_id, player_id, event_type, minute, players(name)')
+      .eq('match_id', matchId)
+      .order('minute')
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((r: Record<string, unknown>) => ({
+      id:          r.id as string,
+      match_id:    r.match_id as string,
+      player_id:   r.player_id as string,
+      player_name: ((r.players as Record<string, unknown>)?.name as string) ?? '?',
+      event_type:  r.event_type as import('@/types').EventType,
+      minute:      r.minute as number | undefined,
+    }))
+  },
+
   calculateScores: async (matchId: string): Promise<void> => {
     const { error } = await supabase.rpc('calculate_match_scores', {
       p_match_id: matchId,
