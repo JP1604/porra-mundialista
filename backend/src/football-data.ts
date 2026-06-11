@@ -99,12 +99,31 @@ export async function getAllMatches(): Promise<FDMatch[]> {
   return (data.matches ?? []) as FDMatch[]
 }
 
-/** 1 request: solo los partidos terminados */
+/** 1 request: solo los partidos terminados — con 3 reintentos ante ECONNRESET */
 export async function getFinishedMatches(): Promise<FDMatch[]> {
-  const { data } = await client.get('/competitions/WC/matches', {
-    params: { season: 2026, status: 'FINISHED' },
-  })
-  return (data.matches ?? []) as FDMatch[]
+  const MAX_RETRIES = 3
+  const RETRY_DELAY = 15_000  // 15 s entre reintentos
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data } = await client.get('/competitions/WC/matches', {
+        params: { season: 2026, status: 'FINISHED' },
+      })
+      return (data.matches ?? []) as FDMatch[]
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      const isRetryable = code === 'ECONNRESET' || code === 'ECONNABORTED' ||
+        (e as Error).message?.includes('socket hang up')
+
+      if (isRetryable && attempt < MAX_RETRIES) {
+        console.warn(`[football-data] Intento ${attempt}/${MAX_RETRIES} falló (${code ?? 'error'}). Reintentando en ${RETRY_DELAY / 1000}s…`)
+        await new Promise(r => setTimeout(r, RETRY_DELAY))
+        continue
+      }
+      throw e
+    }
+  }
+  return []
 }
 
 /** 1 request por partido: goles y asistencias (puede estar vacío en plan free) */
