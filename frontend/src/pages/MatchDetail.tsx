@@ -1,13 +1,21 @@
 import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { useMatch, useMatchdays } from '@/hooks/useMatches'
+import { useMatch, useMatchdays, useMatchEvents } from '@/hooks/useMatches'
 import { useMatchPredictions } from '@/hooks/usePredictions'
 import { MatchPredictionsTable } from '@/components/MatchPredictionsTable'
 import { CountdownTimer } from '@/components/CountdownTimer'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getFlagUrl, formatKickoff } from '@/lib/utils'
+import { getFlagUrl, formatKickoff, cn } from '@/lib/utils'
 import { ChevronLeft } from 'lucide-react'
+import type { EventType, MatchEvent } from '@/types'
+
+const EVENT_LABEL: Record<EventType, { icon: string; label: string; color: string }> = {
+  goal:    { icon: '⚽', label: 'Gol',        color: 'text-green-400' },
+  penalty: { icon: '🎯', label: 'Penal',      color: 'text-blue-400'  },
+  assist:  { icon: '🅰️',  label: 'Asistencia', color: 'text-sky-400'   },
+  motm:    { icon: '⭐', label: 'MOTM',       color: 'text-yellow-400' },
+}
 
 export function MatchDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +23,7 @@ export function MatchDetail() {
   const { data: match, isLoading: loadingMatch, error } = useMatch(id ?? '')
   const { data: predictions, isLoading: loadingPred } = useMatchPredictions(id ?? '')
   const { data: matchdays } = useMatchdays()
+  const { data: events = [] } = useMatchEvents(id ?? '')
 
   if (loadingMatch) {
     return (
@@ -41,6 +50,12 @@ export function MatchDetail() {
 
   const matchday = matchdays?.find(md => md.id === match.matchday_id)
   const isOpen = matchday?.is_open ?? false
+  const isLive = match.status === 'live'
+
+  // Agrupar eventos por tipo para mostrarlos ordenados
+  const goals    = events.filter((e: MatchEvent) => e.event_type === 'goal' || e.event_type === 'penalty')
+  const assists  = events.filter((e: MatchEvent) => e.event_type === 'assist')
+  const motmList = events.filter((e: MatchEvent) => e.event_type === 'motm')
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -53,7 +68,12 @@ export function MatchDetail() {
 
       {/* Match header */}
       <div className="glass-card rounded-2xl p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(0,208,132,0.06)_0%,transparent_70%)]" />
+        <div className={cn(
+          'absolute inset-0',
+          isLive
+            ? 'bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(239,68,68,0.08)_0%,transparent_70%)]'
+            : 'bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,rgba(0,208,132,0.06)_0%,transparent_70%)]'
+        )} />
 
         <div className="relative">
           <div className="text-xs text-slate-600 text-center mb-6 font-medium">
@@ -84,13 +104,22 @@ export function MatchDetail() {
                   {matchday && <CountdownTimer closesAt={matchday.closes_at} compact />}
                 </>
               )}
-              <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 px-2.5 py-0.5 rounded-full border ${
-                match.status === 'finished'
-                  ? 'text-slate-600 bg-white/[0.04] border-white/[0.06]'
-                  : 'text-[#00D084] bg-[#00D084]/10 border-[#00D084]/20'
-              }`}>
-                {match.status === 'finished' ? 'Finalizado' : 'Próximo'}
-              </span>
+
+              {/* Badge de estado */}
+              {isLive ? (
+                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500/15 text-red-400 border border-red-500/25 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  EN VIVO
+                </span>
+              ) : (
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-1 px-2.5 py-0.5 rounded-full border ${
+                  match.status === 'finished'
+                    ? 'text-slate-600 bg-white/[0.04] border-white/[0.06]'
+                    : 'text-[#00D084] bg-[#00D084]/10 border-[#00D084]/20'
+                }`}>
+                  {match.status === 'finished' ? 'Finalizado' : 'Próximo'}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col items-center gap-3 flex-1">
@@ -104,6 +133,68 @@ export function MatchDetail() {
           </div>
         </div>
       </div>
+
+      {/* Eventos del partido (goles, asistencias, MOTM) */}
+      {events.length > 0 && (
+        <div className="glass-card rounded-xl p-5 space-y-4">
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">
+            Eventos del partido
+          </h2>
+
+          <div className="grid sm:grid-cols-3 gap-4">
+            {/* Goles */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                ⚽ Goles {goals.length > 0 && <span className="text-slate-500">({goals.length})</span>}
+              </p>
+              {goals.length === 0
+                ? <p className="text-xs text-slate-700">—</p>
+                : goals.map((ev: MatchEvent) => (
+                  <div key={ev.id} className="flex items-center gap-2 text-sm">
+                    <span>{EVENT_LABEL[ev.event_type].icon}</span>
+                    <span className="font-semibold text-white">{ev.player_name}</span>
+                    {ev.minute && <span className="text-xs text-slate-600">{ev.minute}'</span>}
+                    {ev.event_type === 'penalty' && (
+                      <span className="text-[10px] text-blue-400 font-medium">(P)</span>
+                    )}
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Asistencias */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                🅰️ Asistencias {assists.length > 0 && <span className="text-slate-500">({assists.length})</span>}
+              </p>
+              {assists.length === 0
+                ? <p className="text-xs text-slate-700">—</p>
+                : assists.map((ev: MatchEvent) => (
+                  <div key={ev.id} className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-sky-400">{ev.player_name}</span>
+                    {ev.minute && <span className="text-xs text-slate-600">{ev.minute}'</span>}
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* MOTM */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                ⭐ MOTM
+              </p>
+              {motmList.length === 0
+                ? <p className="text-xs text-slate-700">—</p>
+                : motmList.map((ev: MatchEvent) => (
+                  <div key={ev.id} className="flex items-center gap-2 text-sm">
+                    <span className="font-semibold text-yellow-400">{ev.player_name}</span>
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Predictions */}
       <section className="space-y-3">

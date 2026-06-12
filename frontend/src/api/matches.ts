@@ -59,6 +59,7 @@ export const matchesApi = {
 
   // ── Admin ────────────────────────────────────────────────────
 
+  /** Guardar resultado final y marcar como 'finished' */
   registerResult: async (id: string, dto: RegisterResultDto): Promise<Match> => {
     const { data, error } = await supabase
       .from('matches')
@@ -72,6 +73,24 @@ export const matchesApi = {
       .single()
     if (error) throw new Error(error.message)
     return data as Match
+  },
+
+  /** Actualizar marcador parcial en vivo (sin cambiar status) */
+  updateLiveScore: async (id: string, homeScore: number, awayScore: number): Promise<void> => {
+    const { error } = await supabase
+      .from('matches')
+      .update({ home_score: homeScore, away_score: awayScore })
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+  },
+
+  /** Cambiar status del partido (upcoming → live → finished) */
+  setStatus: async (id: string, status: 'upcoming' | 'live' | 'finished'): Promise<void> => {
+    const { error } = await supabase
+      .from('matches')
+      .update({ status })
+      .eq('id', id)
+    if (error) throw new Error(error.message)
   },
 
   registerEvent: async (id: string, dto: RegisterEventDto): Promise<void> => {

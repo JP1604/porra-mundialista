@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import {
   useMatches, useMatchdays, useRegisterResult,
   useRegisterEvent, useDeleteEvent, useMatchEvents,
+  useUpdateLiveScore, useSetMatchStatus,
 } from '@/hooks/useMatches'
 import { usePlayers } from '@/hooks/usePlayers'
 import { useAuth } from '@/contexts/AuthContext'
@@ -79,34 +80,94 @@ function EventList({ matchId }: { matchId: string }) {
 function ResultForm({ match }: { match: Match }) {
   const [home, setHome] = useState(match.home_score?.toString() ?? '0')
   const [away, setAway] = useState(match.away_score?.toString() ?? '0')
-  const reg = useRegisterResult(match.id)
+  const reg     = useRegisterResult(match.id)
+  const live    = useUpdateLiveScore(match.id)
+  const setStatus = useSetMatchStatus(match.id)
+  const isLive  = match.status === 'live'
 
   return (
-    <form
-      onSubmit={e => {
-        e.preventDefault()
-        reg.mutate(
-          { home_score: parseInt(home), away_score: parseInt(away) },
-          {
-            onSuccess: () => toast.success(`Resultado guardado: ${home}–${away}`),
-            onError: (err) => toast.error(err.message),
-          }
-        )
-      }}
-      className="flex items-center gap-2 flex-wrap"
-    >
-      <span className="text-xs text-slate-500 w-20 truncate text-right font-medium">{match.home_team_name}</span>
-      <Input type="number" min={0} max={20} value={home} onChange={e => setHome(e.target.value)}
-        className="w-14 h-9 text-center text-lg font-black bg-slate-800/60 border-white/[0.1] text-white focus-visible:ring-[#F59E0B]" />
-      <span className="text-slate-500 font-bold text-lg">–</span>
-      <Input type="number" min={0} max={20} value={away} onChange={e => setAway(e.target.value)}
-        className="w-14 h-9 text-center text-lg font-black bg-slate-800/60 border-white/[0.1] text-white focus-visible:ring-[#F59E0B]" />
-      <span className="text-xs text-slate-500 w-20 truncate font-medium">{match.away_team_name}</span>
-      <Button type="submit" size="sm" disabled={reg.isPending}
-        className="bg-[#F59E0B] hover:bg-amber-500 text-slate-900 font-bold text-xs ml-2 gap-1.5">
-        {reg.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Guardar resultado'}
-      </Button>
-    </form>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-500 w-20 truncate text-right font-medium">{match.home_team_name}</span>
+        <Input type="number" min={0} max={20} value={home} onChange={e => setHome(e.target.value)}
+          className="w-14 h-9 text-center text-lg font-black bg-slate-800/60 border-white/[0.1] text-white focus-visible:ring-[#F59E0B]" />
+        <span className="text-slate-500 font-bold text-lg">–</span>
+        <Input type="number" min={0} max={20} value={away} onChange={e => setAway(e.target.value)}
+          className="w-14 h-9 text-center text-lg font-black bg-slate-800/60 border-white/[0.1] text-white focus-visible:ring-[#F59E0B]" />
+        <span className="text-xs text-slate-500 w-20 truncate font-medium">{match.away_team_name}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {/* Iniciar EN VIVO (solo si es upcoming) */}
+        {match.status === 'upcoming' && (
+          <Button
+            type="button" size="sm" variant="outline"
+            disabled={setStatus.isPending}
+            onClick={() => setStatus.mutate('live', {
+              onSuccess: () => toast.success('⚡ Partido marcado como EN VIVO'),
+              onError: (e) => toast.error(e.message),
+            })}
+            className="border-red-500/30 text-red-400 hover:bg-red-500/10 text-xs gap-1.5"
+          >
+            {setStatus.isPending ? <RefreshCw className="w-3 h-3 animate-spin" /> : '🔴'}
+            Iniciar en vivo
+          </Button>
+        )}
+
+        {/* Actualizar marcador EN VIVO (solo durante live) */}
+        {isLive && (
+          <Button
+            type="button" size="sm"
+            disabled={live.isPending}
+            onClick={() => live.mutate(
+              { home: parseInt(home), away: parseInt(away) },
+              {
+                onSuccess: () => toast.success(`📡 Marcador actualizado: ${home}–${away}`),
+                onError: (e) => toast.error(e.message),
+              }
+            )}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs gap-1.5 animate-pulse"
+          >
+            {live.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : '📡'}
+            Actualizar marcador
+          </Button>
+        )}
+
+        {/* Finalizar partido (live o upcoming) */}
+        {match.status !== 'finished' && (
+          <Button
+            type="button" size="sm"
+            disabled={reg.isPending}
+            onClick={() => reg.mutate(
+              { home_score: parseInt(home), away_score: parseInt(away) },
+              {
+                onSuccess: () => toast.success(`✅ Partido finalizado: ${home}–${away}`),
+                onError: (e) => toast.error(e.message),
+              }
+            )}
+            className="bg-[#F59E0B] hover:bg-amber-500 text-slate-900 font-bold text-xs gap-1.5"
+          >
+            {reg.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : '✓'}
+            Finalizar partido
+          </Button>
+        )}
+
+        {/* Reabrir partido (finished) */}
+        {match.status === 'finished' && (
+          <Button
+            type="button" size="sm" variant="outline"
+            disabled={setStatus.isPending}
+            onClick={() => setStatus.mutate('live', {
+              onSuccess: () => toast.success('Partido reabierto como EN VIVO'),
+              onError: (e) => toast.error(e.message),
+            })}
+            className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10 text-xs"
+          >
+            Reabrir partido
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
 

@@ -1,6 +1,6 @@
 // ─── Entidades del dominio ───────────────────────────────────────────────────
 
-export type MatchStatus = 'upcoming' | 'finished'
+export type MatchStatus = 'upcoming' | 'live' | 'finished'
 export type MatchStage = 'group' | 'r32' | 'r16' | 'qf' | 'sf' | 'final'
 export type EventType = 'goal' | 'penalty' | 'assist' | 'motm'
 
