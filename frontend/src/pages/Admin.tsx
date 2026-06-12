@@ -119,13 +119,26 @@ function ResultForm({ match }: { match: Match }) {
           <Button
             type="button" size="sm"
             disabled={live.isPending}
-            onClick={() => live.mutate(
-              { home: parseInt(home), away: parseInt(away) },
-              {
-                onSuccess: () => toast.success(`📡 Marcador actualizado: ${home}–${away}`),
-                onError: (e) => toast.error(e.message),
-              }
-            )}
+            onClick={async () => {
+              const h = parseInt(home)
+              const a = parseInt(away)
+              live.mutate(
+                { home: h, away: a },
+                {
+                  onSuccess: async () => {
+                    toast.success(`📡 Marcador actualizado: ${home}–${away}`)
+                    // Recalcular puntajes en tiempo real
+                    try {
+                      const { supabase } = await import('@/lib/supabase')
+                      await supabase.rpc('calculate_match_scores', { p_match_id: match.id })
+                    } catch (_) {
+                      // silencioso — no bloquear la UX
+                    }
+                  },
+                  onError: (e) => toast.error(e.message),
+                }
+              )
+            }}
             className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs gap-1.5 animate-pulse"
           >
             {live.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : '📡'}
@@ -196,9 +209,18 @@ function EventForm({ match }: { match: Match }) {
         reg.mutate(
           { player_id: selected.id, event_type: eventType, minute: minute ? parseInt(minute) : undefined },
           {
-            onSuccess: () => {
-              toast.success(`${EVENT_CONFIG[eventType].icon} ${selected.name} — ${EVENT_CONFIG[eventType].label} registrado`)
+            onSuccess: async () => {
+              toast.success(`${EVENT_CONFIG[eventType].icon} ${selected!.name} — ${EVENT_CONFIG[eventType].label} registrado`)
               setSelected(null); setSearch(''); setMinute('')
+              // Si el partido está en curso, recalcular puntajes al instante
+              if (match.status === 'live' || match.status === 'finished') {
+                try {
+                  const { supabase } = await import('@/lib/supabase')
+                  await supabase.rpc('calculate_match_scores', { p_match_id: match.id })
+                } catch (_) {
+                  // silencioso
+                }
+              }
             },
             onError: (err) => toast.error(err.message),
           }
